@@ -1,0 +1,43 @@
+library(tidyverse)
+library(rvest)
+library(nbastatR)
+library(heapsofpapers)
+# Data from nbaR
+gamedata <- game_logs(seasons = 2022)
+
+head(gamedata)
+season_data <- nbastatR::seasons_players(seasons = 2022)
+
+head(season_data)
+player_profiles(players = c("Steph Curry", "Fred Vanvleet"))
+rosters <- seasons_rosters(seasons = 2022)
+
+
+# Obtain Birthday from NBA.com URLs
+## Save all htmls
+
+
+birthday_player <- function(link){
+  birthday_data <-
+    read_html(link) |>
+    html_elements(".PlayerSummary_playerInfoValue__JS8_v") |>
+    html_text()
+  if(length(birthday_data >= 6)) {
+  return(birthday_data[6])
+  } else {
+          warning("Birthday data not found")
+          return(NA) }
+
+}
+for(url in season_data$urlPlayerStats) {
+  sapply(urlPlayerStats, birthday_player)
+}
+# add bday column
+seasondata_plus <- season_data %>%
+    mutate(bday = sapply(urlPlayerStats, birthday_player))
+
+birthday_player("https://www.nba.com/stats/player/201939")
+
+read_html("https://www.nba.com/stats/player/201939") |>
+html_elements(".PlayerSummary_playerInfoValue__JS8_v") |>
+html_text()
