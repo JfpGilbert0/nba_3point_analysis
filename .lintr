@@ -1,0 +1,9 @@
+linters: 
+  with_defaults:
+    line_length_linter: 120
+    commented_code_linter: NULL # see vignette("lintr")
+  indentation_linter:
+    check_assign_indention: false
+    check_function_indention: true
+    check_call_indention: true
+    indent_size: 4    
