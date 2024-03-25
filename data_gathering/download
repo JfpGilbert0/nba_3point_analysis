@@ -1,4 +1,4 @@
-#setup
+# setup
 library(tidyverse)
 library(rvest)
 library(nbastatR)
@@ -8,65 +8,17 @@ library(heapsofpapers)
 library(arrow)
 Sys.setenv("VROOM_CONNECTION_SIZE" = 300000)
 # Data from nbaR
-gamedata <- clean_names(game_logs(seasons = 2022))
-
+gamedata <- clean_names(game_logs(seasons = 2012:2022, season_types = c("Regular Season", "Playoffs")))
 # Save raw
-write_parquet(x = gamedata, sink ="data/raw/gamedata_2022.parquet")
+write_parquet(x = gamedata, sink ="data/raw/gamedata.parquet")
 
-head(gamedata)
-season_data <- nbastatR::seasons_players(seasons = 2022)
-
+# 
+season_data <- clean_names(nbastatR::seasons_players(seasons = 2012:2022))
 # Save raw
-write_parquet(x = season_data, sink ="data/raw/season_2022.parquet")
+write_parquet(x = season_data, sink ="data/raw/seasondata.parquet")
 
-head(season_data)
-player_profiles(players = c("Steph Curry", "Fred Vanvleet"))
+# Dowload Rosters
+rosters <- clean_names(seasons_rosters(seasons = 2012:2022))
+#save raw
+write_parquet(x = rosters, sink ="data/raw/rosters.parquet")
 
-
-# Clean Rosters
-rosters <- clean_names(seasons_rosters(seasons = 2022))
-id_bday <- tibble(id_player = rosters$id_player, date_birth = rosters$date_birth)
-gamedata_plus <- inner_join(gamedata, id_bday, by = "id_player")
-
-# Fix NA's with url
-rosters <- seasons_rosters(seasons = 2022)
-
-
-# Obtain Birthday from NBA.com URLs
-## Save all htmls
-
-birthday_player <- function(link){
-  birthday_data <-
-    read_html(link) |>
-    html_elements(".PlayerSummary_playerInfoValue__JS8_v") |>
-    html_text()
-  if(length(birthday_data >= 6)) {
-  return(birthday_data[6])
-  } else {
-          warning("Birthday data not found")
-          return(NA) }}
-gamedata_plus |> 
-  mutate(date_birth = ifelse(is.na(date_birth), birthday_player(url_player_stats)[1], date_birth))
-
-  
-links_with_na <-
-  gamedata_plus[is.na(gamedata_plus$date_birth), ]$url_player_stats
-links_with_na |>
-  unique()
-  n=0
-  for(link in links_with_na) {
-    print(birthday_player(link))
-    print(link)
-    n=n+1
-    print(n+1)
-  }
-# join birthdays onto
-# add bday column
-seasondata_plus <- season_data %>%
-    mutate(bday = sapply(urlPlayerStats, birthday_player))
-
-class(birthday_player("https://www.nba.com/stats/player/201939")[1])
-
-read_html("https://www.nba.com/stats/player/201939") |>
-html_elements(".PlayerSummary_playerInfoValue__JS8_v") |>
-html_text()

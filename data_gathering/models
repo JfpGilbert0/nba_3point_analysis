@@ -1,0 +1,21 @@
+# Setup
+library(tidyverse)
+library(rvest)
+library(nbastatR)
+library(lubridate)
+library(janitor)
+library(heapsofpapers)
+library(arrow)
+library(modelsummary)
+# Open Parquet
+gamedata <- read_parquet("data/analysis/cleaned_gamedata.parquet")
+
+view(head(gamedata))
+# for short regression
+
+data_short <- gamedata %>% select(year_season, name_player, id_game, pts_diff, is_bday)
+
+data_short |> count(is_bday)
+
+short <- glm(pts_diff ~ is_bday, data = data_short)
+modelsummary(short)

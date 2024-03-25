@@ -8,11 +8,15 @@ library(heapsofpapers)
 library(arrow)
 
 #Open Parquets
-game_data <- read_parquet("data/raw/gamedata_2022.parquet")
-season_data <- read_parquet("data/raw/season_2022.parquet")
+gamedata <- read_parquet("data/raw/gamedata.parquet")
+season_data <- read_parquet("data/raw/seasondata.parquet")
+rosters <- read_parquet("data/raw/rosters.parquet")
 # Clean Rosters
-rosters <- clean_names(seasons_rosters(seasons = 2022))
-id_bday <- tibble(id_player = rosters$id_player, date_birth = rosters$date_birth)
+
+id_bday <- rosters %>% 
+    filter(!duplicated(id_player))
+id_bday <- id_bday |>
+    select(id_player, date_birth)
 gamedata_plus <- inner_join(gamedata, id_bday, by = "id_player")
 
 # Need to add a average ppg variable
@@ -21,11 +25,13 @@ gamedata_plus_ppg <- gamedata_plus %>%
     mutate( avg_ppg_szn = mean(pts, na.rm = TRUE)) %>%
     ungroup()
 
-damedata_plus_diff <- gamedata_plus_ppg %>%
+gamedata_plus_diff <- gamedata_plus_ppg %>%
     mutate(pts_diff = pts - avg_ppg_szn,
          is_bday = ifelse(month(date_game) == month(date_birth) & day(date_game) == day(date_birth), TRUE, FALSE))
 
 # save cleaned
 write_parquet(gamedata_plus_diff, sink = "data/analysis/cleaned_gamedata.parquet")
 
-summary(gamedata_plus_ppg)
+unique_rosters <- rosters %>% 
+    filter(!duplicated(id_player))
+view(id_bday)
