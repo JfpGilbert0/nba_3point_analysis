@@ -24,6 +24,7 @@ pbp <- rbind(pbp, pbp3)
 pbp_4th <- pbp |>
     filter(number_period == 4)
 
+write_parquet(x = pbp_4th, sink = "data/analysis/pbp_4thonly")
 # Clean Rosters
 
 id_bday <- rosters %>% 
