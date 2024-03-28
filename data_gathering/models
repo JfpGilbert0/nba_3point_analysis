@@ -7,15 +7,27 @@ library(janitor)
 library(heapsofpapers)
 library(arrow)
 library(modelsummary)
+library(bayesplot)
 # Open Parquet
 gamedata <- read_parquet("data/analysis/cleaned_gamedata.parquet")
 
 view(head(gamedata))
 # for short regression
 
-data_short <- gamedata %>% select(year_season, name_player, id_game, pts_diff, is_bday)
+data_short <- gamedata %>% select(year_season, name_player, minutes, id_game, pts_diff, is_bday) %>%
+filter(minutes > 10)
 
 data_short |> count(is_bday)
 
 short <- glm(pts_diff ~ is_bday, data = data_short)
 modelsummary(short)
+
+minutes_short <-  glm(min_diff ~ is_bday, data = gamedata)
+modelsummary(minutes_short)
+# Look at birthday games
+bday_games <- gamedata |> filter(is_bday)
+
+pp_check(short)
+
+ggplot() +
+geom_point(data = gamedata, aes(x = pts_diff, y = minutes))

@@ -11,6 +11,19 @@ library(arrow)
 gamedata <- read_parquet("data/raw/gamedata.parquet")
 season_data <- read_parquet("data/raw/seasondata.parquet")
 rosters <- read_parquet("data/raw/rosters.parquet")
+
+#clean and combine play-by play data from 2022 season
+pbp1 <- clean_names(read_parquet("data/raw/pbp2022_1.parquet"))
+pbp2 <- clean_names(read_parquet("data/raw/pbp2022_2.parquet"))
+pbp3 <- clean_names(read_parquet("data/raw/pbp2022_3.parquet"))
+
+pbp <- rbind(pbp1, pbp2)
+pbp <- rbind(pbp, pbp3)
+
+#creating a 4th quarter db
+pbp_4th <- pbp |>
+    filter(number_period == 4)
+
 # Clean Rosters
 
 id_bday <- rosters %>% 
@@ -29,6 +42,11 @@ gamedata_plus_diff <- gamedata_plus_ppg %>%
     mutate(pts_diff = pts - avg_ppg_szn,
          is_bday = ifelse(month(date_game) == month(date_birth) & day(date_game) == day(date_birth), TRUE, FALSE))
 
+# add minutes diff
+gamedata_plus_diff <- gamedata_plus_diff %>% 
+    group_by(year_season, id_player) %>%
+    mutate( avg_min_szn = mean(minutes, na.rm = TRUE), min_diff = minutes - avg_min_szn) %>%
+    ungroup
 # save cleaned
 write_parquet(gamedata_plus_diff, sink = "data/analysis/cleaned_gamedata.parquet")
 
