@@ -22,7 +22,11 @@ pbp <- rbind(pbp, pbp3)
 
 #creating a 4th quarter db
 pbp_4th <- pbp |>
-    filter(number_period == 4)
+    filter(number_period == 4) |>
+    rename(
+        pbp_home = description_play_home,
+        pbp_away = description_play_visitor
+    )
 
 write_parquet(x = pbp_4th, sink = "data/analysis/pbp_4thonly")
 # Clean Rosters

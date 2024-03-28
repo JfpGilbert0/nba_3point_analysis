@@ -1,0 +1,25 @@
+# Setup
+library(tidyverse)
+library(rvest)
+library(nbastatR)
+library(lubridate)
+library(janitor)
+library(heapsofpapers)
+library(arrow)
+library(modelsummary)
+library(bayesplot)
+
+# Here we will play around with some 4th quarter play by play data,
+# some of the manipulation may be moved to cleaning folder.
+pbp <- read_parquet("data/analysis/pbp_4thonly")
+
+pbp <-pbp %>%
+  mutate(
+    Home3PA = grepl("3PT", pbp_home),
+    Home3PM = ifelse(Home3PA & !grepl("MISS", pbp_home), TRUE, FALSE),
+    Away3PA = grepl("3PT", pbp_away),
+    Away3PM = ifelse(Away3PA & !grepl("MISS", pbp_away), TRUE, FALSE)
+  )
+mutate()
+
+view()
