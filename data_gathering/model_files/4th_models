@@ -22,7 +22,7 @@ identify_shot <- function(play) {
     } else if (grepl("3PT Jump Shot|Pullup Jump Shot", play)) {
       return("3PT missed")
     } else if (grepl("Jump Shot|Layup|Dunk", play) && !grepl("3PT", play)) {
-      return("2pt missed")
+      return("2PT missed")
     }
   } else {
     if (grepl("Free Throw", play)) {
@@ -37,20 +37,21 @@ identify_shot <- function(play) {
 
 # Create Boolean for shot types
 pbp_test <- pbp |> mutate(
+  gameteam_id = paste(as.character(id_game), team_name_player1, sep="-"),
   play_h = sapply(pbp_home, identify_shot),
   play_a = sapply(pbp_away, identify_shot),
   att_2pt_h = ifelse(grepl("2PT", play_h), TRUE, FALSE),
-  made_2pt_h = ifelse(grepl("2PT made", play_h), TRUE, FALSE),
+  made_2pt_h = "2PT made" == play_h,
   att_3pt_h = ifelse(grepl("3PT", play_h), TRUE, FALSE),
-  made_3pt_h = ifelse(grepl("3PT made", play_h), TRUE, FALSE),
+  made_3pt_h = "3PT made" == play_h,
   att_ft_h = ifelse(grepl("FT", play_h), TRUE, FALSE),
-  made_ft_h = ifelse(grepl("FT made", play_h), TRUE, FALSE),
+  made_ft_h = "FT made" == play_h,
   att_2pt_a = ifelse(grepl("2PT", play_a), TRUE, FALSE),
-  made_2pt_a = ifelse(grepl("2PT made", play_a), TRUE, FALSE),
+  made_2pt_a = "2PT made" == play_a,
   att_3pt_a = ifelse(grepl("3PT", play_a), TRUE, FALSE),
-  made_3pt_a = ifelse(grepl("3PT made", play_a), TRUE, FALSE),
+  made_3pt_a = "3PT made" == play_a,
   att_ft_a = ifelse(grepl("FT", play_a), TRUE, FALSE),
-  made_ft_a = ifelse(grepl("FT made", play_a), TRUE, FALSE))
+  made_ft_a = "FT made" == play_a)
 
 # Now grouping by game_id and team_name
 pbp_group_test <- pbp_test %>% 
@@ -70,14 +71,32 @@ pbp_group_test <- pbp_test %>%
     att_ft_a = sum(att_ft_a),
     made_ft_a = sum(made_ft_a)) %>%
     mutate(
-    home_team = ifelse(att_3_h + att_2_h + att_ft_h > 0, TRUE, FALSE)
+      gameteam_id = paste(as.character(id_game), team, sep="-"),
+    home = ifelse(att_3_h + att_2_h + att_ft_h > 0, TRUE, FALSE)
     ) %>% filter(!is.na(team)) %>% ungroup()
 
 # Just data from said team, and adds shot%
 
+teamgameshots <-pbp_group_test |> 
+  mutate(pct_3pt = ifelse(home, made_3_h/att_3_h, made_3_a/att_3_a),
+         pct_2pt = ifelse(home, made_2_h/att_2_h, made_2_a/att_2_a),
+         pct_ft = ifelse(home, made_ft_h/att_ft_h, made_ft_a/att_ft_a),
+         att_3pt = ifelse(home, att_3_h, att_3_a),
+         att_2pt = ifelse(home, att_2_h, att_2_a),
+         att_ft = ifelse(home, att_ft_h, att_ft_a),
+         opp_pct_3pt = ifelse(home, made_ft_a/att_ft_a, made_ft_h/att_ft_h), #this mehod for opp stats doesnt work!!!!!
+         opp_pct_2pt =  ifelse(home, made_ft_a/att_ft_a, made_ft_h/att_ft_h),
+         opp_pct_ft = ifelse(home, made_ft_a/att_ft_a, made_ft_h/att_ft_h),
+         opp_att_3pt = ifelse(home, att_3_a, att_3_h),
+         opp_att_2pt = ifelse(home, att_2_a, att_2_h),
+         opp_att_ft = ifelse(home, att_ft_a, att_ft_h),
+         ) %>%
+  select(gameteam_id, id_game, team, home, pct_3pt, pct_2pt, pct_ft, att_3pt, att_2pt, att_ft, opp_pct_3pt, opp_pct_2pt, opp_pct_ft, opp_att_3pt, opp_att_2pt,  , opp_att_ft)
+
+names(teamgameshots)
 #will use this table to id home team
 # gather and group score, 4Q lead data per team per game
-hometeam <- pbp_group_test |> select(id_game, team, home_team)
+hometeam <- pbp_group_test |> select(gameteam_id, id_game, team, home)
 
 quarter_start <- pbp_test %>% 
     filter(grepl("Start of 4th Period", description_play_neutral)) %>%
@@ -97,12 +116,30 @@ teamgamescores <- inner_join(teamgamescores, quarter_end, by = "id_game")
 
 teamgamescores <- teamgamescores %>%
   rename(q4_margin = q4_margin_h, final_margin = final_margin_h) %>%
-  mutate(q4_margin = ifelse(home_team, q4_margin, -q4_margin),
-         final_margin = ifelse(home_team, final_margin, -final_margin),
+  mutate(q4_margin = ifelse(home, q4_margin, -q4_margin),
+         final_margin = ifelse(home, final_margin, -final_margin),
          win = final_margin > 0) 
 
 
+# this creates a table of each teams 4th quarter % and attempts from 3
+sub_teamgamescores <- teamgamescores |> subset(select = -c(id_game, team, home))
+sub_teamgameshots <- teamgameshots |> subset(select = -c(id_game, team, home))
+names(teamgamescores)
+names(teamgameshots)
+teamgame <- inner_join(teamgamescores, teamgameshots, by = "gameteam_id", keep(.x)) |>
+  mutate(pct_3pt = pct_3pt*1)
 
+team_4th_3pt <- teamgame %>%
+  group_by(team) %>%
+  summarise(
+    pct_3pt = mean(pct_3pt),
+    att_3pt = mean(att_3pt)
+  )
+
+# Do a test regression
+model <- lm(win ~ att_ft, data = teamgame)
+
+modelsummary(model)
 pbp$pbp_away |> unique()
 threes <- pbp %>%
   group_by(id_game) %>%
