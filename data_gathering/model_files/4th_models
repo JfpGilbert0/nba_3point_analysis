@@ -13,13 +13,105 @@ library(bayesplot)
 # some of the manipulation may be moved to cleaning folder.
 pbp <- read_parquet("data/analysis/pbp_4thonly")
 
-pbp <-pbp %>%
-  mutate(
-    Home3PA = grepl("3PT", pbp_home),
-    Home3PM = ifelse(Home3PA & !grepl("MISS", pbp_home), TRUE, FALSE),
-    Away3PA = grepl("3PT", pbp_away),
-    Away3PM = ifelse(Away3PA & !grepl("MISS", pbp_away), TRUE, FALSE)
-  )
-mutate()
+# Function that takes play-by-play string and returns a simplified string for shots
+# Perhaps extend to turnovers? and other plays
+identify_shot <- function(play) {
+  if (grepl("MISS", play)) {
+    if (grepl("Free Throw", play)) {
+      return("FT missed")
+    } else if (grepl("3PT Jump Shot|Pullup Jump Shot", play)) {
+      return("3PT missed")
+    } else if (grepl("Jump Shot|Layup|Dunk", play) && !grepl("3PT", play)) {
+      return("2pt missed")
+    }
+  } else {
+    if (grepl("Free Throw", play)) {
+      return("FT made")
+    } else if (grepl("3PT", play)) {
+      return("3PT made")
+    } else if (grepl("Layup|Jump Shot|Dunk", play) && !grepl("3PT", play)) {
+      return("2PT made")
+    }
+  }
+}
+
+# Create Boolean for shot types
+pbp_test <- pbp |> mutate(
+  play_h = sapply(pbp_home, identify_shot),
+  play_a = sapply(pbp_away, identify_shot),
+  att_2pt_h = ifelse(grepl("2PT", play_h), TRUE, FALSE),
+  made_2pt_h = ifelse(grepl("2PT made", play_h), TRUE, FALSE),
+  att_3pt_h = ifelse(grepl("3PT", play_h), TRUE, FALSE),
+  made_3pt_h = ifelse(grepl("3PT made", play_h), TRUE, FALSE),
+  att_ft_h = ifelse(grepl("FT", play_h), TRUE, FALSE),
+  made_ft_h = ifelse(grepl("FT made", play_h), TRUE, FALSE),
+  att_2pt_a = ifelse(grepl("2PT", play_a), TRUE, FALSE),
+  made_2pt_a = ifelse(grepl("2PT made", play_a), TRUE, FALSE),
+  att_3pt_a = ifelse(grepl("3PT", play_a), TRUE, FALSE),
+  made_3pt_a = ifelse(grepl("3PT made", play_a), TRUE, FALSE),
+  att_ft_a = ifelse(grepl("FT", play_a), TRUE, FALSE),
+  made_ft_a = ifelse(grepl("FT made", play_a), TRUE, FALSE))
+
+# Now grouping by game_id and team_name
+pbp_group_test <- pbp_test %>% 
+    group_by(id_game, team_name_player1) %>%
+    rename(team = team_name_player1) %>%
+    summarise(
+    att_3_h = sum(att_3pt_h),
+    made_3_h = sum(made_3pt_h),
+    att_2_h = sum(att_2pt_h),
+    made_2_h = sum(made_2pt_h),
+    att_ft_h = sum(att_ft_h),
+    made_ft_h = sum(made_ft_h),
+    att_3_a = sum(att_3pt_a), 
+    made_3_a = sum(made_3pt_a),
+    att_2_a = sum(att_2pt_a),
+    made_2_a = sum(made_2pt_a),
+    att_ft_a = sum(att_ft_a),
+    made_ft_a = sum(made_ft_a)) %>%
+    mutate(
+    home_team = ifelse(att_3_h + att_2_h + att_ft_h > 0, TRUE, FALSE)
+    ) %>% filter(!is.na(team)) %>% ungroup()
+
+# Just data from said team, and adds shot%
+
+#will use this table to id home team
+# gather and group score, 4Q lead data per team per game
+hometeam <- pbp_group_test |> select(id_game, team, home_team)
+
+quarter_start <- pbp_test %>% 
+    filter(grepl("Start of 4th Period", description_play_neutral)) %>%
+    select(id_game, score_away, score_home, margin_score) %>%
+    rename(q4_margin_h = margin_score)
+
+quarter_end <- pbp_test %>% 
+    filter(grepl("End of 4th Period", description_play_neutral)) %>%
+    select(id_game, score_away, score_home, margin_score) %>%
+    mutate(margin_score = ifelse(score_away == score_home, 0, margin_score)) %>%
+    rename(final_score_a = score_away,
+           final_score_h = score_home,
+           final_margin_h = margin_score)
+
+teamgamescores <- inner_join(hometeam, quarter_start, by = "id_game")
+teamgamescores <- inner_join(teamgamescores, quarter_end, by = "id_game")
+
+teamgamescores <- teamgamescores %>%
+  rename(q4_margin = q4_margin_h, final_margin = final_margin_h) %>%
+  mutate(q4_margin = ifelse(home_team, q4_margin, -q4_margin),
+         final_margin = ifelse(home_team, final_margin, -final_margin),
+         win = final_margin > 0) 
+
+
+
+pbp$pbp_away |> unique()
+threes <- pbp %>%
+  group_by(id_game) %>%
+  summarize(
+    Total_H_3PM = sum(Home3PM),
+    Total_H_3PA = sum(Home3PA),
+    Total_A_3PM = sum(Away3PM),
+    Total_A_3PA = sum(Away3PA),
+  ) %>%
+  ungroup()
 
 view()
