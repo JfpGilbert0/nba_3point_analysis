@@ -8,7 +8,7 @@ library(heapsofpapers)
 library(arrow)
 library(modelsummary)
 library(bayesplot)
-
+library(vtable)
 # Here we will play around with some 4th quarter play by play data,
 # some of the manipulation may be moved to cleaning folder.
 pbp <- read_parquet("data/analysis/pbp_4thonly")
@@ -72,24 +72,24 @@ pbp_group_test <- pbp_test %>%
     made_ft_a = sum(made_ft_a)) %>%
     mutate(
       gameteam_id = paste(as.character(id_game), team, sep="-"),
-    home = ifelse(att_3_h + att_2_h + att_ft_h > 0, TRUE, FALSE)
+      home = ifelse(att_3_h + att_2_h + att_ft_h > 0, TRUE, FALSE)
     ) %>% filter(!is.na(team)) %>% ungroup()
 
 # Just data from said team, and adds shot%
 
 teamgameshots <-pbp_group_test |> 
-  mutate(pct_3pt = ifelse(home, made_3_h/att_3_h, made_3_a/att_3_a),
-         pct_2pt = ifelse(home, made_2_h/att_2_h, made_2_a/att_2_a),
-         pct_ft = ifelse(home, made_ft_h/att_ft_h, made_ft_a/att_ft_a),
+  mutate(pct_3pt = ifelse(home, ifelse(att_3_h == 0, NA_integer_, made_3_h/att_3_h), ifelse(att_3_a == 0, NA_integer_, made_3_a/att_3_a)),
+         pct_2pt = ifelse(home, ifelse(att_2_h == 0, NA_integer_, made_2_h/att_2_h), ifelse(att_2_a == 0, NA_integer_, made_2_a/att_2_a)),
+         pct_ft = ifelse(home, ifelse(att_ft_h == 0, NA_integer_, made_ft_h/att_ft_h), ifelse(att_ft_a == 0, NA_integer_, made_ft_a/att_ft_a)),
          att_3pt = ifelse(home, att_3_h, att_3_a),
          att_2pt = ifelse(home, att_2_h, att_2_a),
          att_ft = ifelse(home, att_ft_h, att_ft_a),
          opp_pct_3pt = ifelse(home, made_ft_a/att_ft_a, made_ft_h/att_ft_h), #this mehod for opp stats doesnt work!!!!!
-         opp_pct_2pt =  ifelse(home, made_ft_a/att_ft_a, made_ft_h/att_ft_h),
+         opp_pct_2pt =  ifelse(home, made_ft_a/att_ft_a, made_ft_h/att_ft_h), #because away stats are empty in summarize table
          opp_pct_ft = ifelse(home, made_ft_a/att_ft_a, made_ft_h/att_ft_h),
          opp_att_3pt = ifelse(home, att_3_a, att_3_h),
          opp_att_2pt = ifelse(home, att_2_a, att_2_h),
-         opp_att_ft = ifelse(home, att_ft_a, att_ft_h),
+         opp_att_ft = ifelse(home, att_ft_a, att_ft_h)
          ) %>%
   select(gameteam_id, id_game, team, home, pct_3pt, pct_2pt, pct_ft, att_3pt, att_2pt, att_ft, opp_pct_3pt, opp_pct_2pt, opp_pct_ft, opp_att_3pt, opp_att_2pt,  , opp_att_ft)
 
@@ -121,7 +121,31 @@ teamgamescores <- teamgamescores %>%
          win = final_margin > 0) 
 
 
-# this creates a table of each teams 4th quarter % and attempts from 3
+# Summary statistics:
+team_4th_shots <- teamgameshots %>%
+  group_by(team) %>%
+  summarise(
+    att_2pt = mean(att_2pt),
+    att_3pt = mean(att_3pt),
+    att_ft = mean(att_ft),
+    pct_3pt = mean(pct_3pt),
+    pct_2pt = mean(pct_2pt),
+    pct_ft = mean(pct_ft)
+  ) 
+vt(team_4th_shots)
+
+league_4th_shots <- teamgameshots %>%
+  summarise(
+    att_2pt = mean(att_2pt),
+    att_3pt = mean(att_3pt),
+    att_ft = mean(att_ft),
+    pct_3pt = mean(pct_3pt),
+    pct_2pt = mean(pct_2pt),
+    pct_ft = mean(pct_ft)
+  ) 
+
+
+# Do a test regression
 sub_teamgamescores <- teamgamescores |> subset(select = -c(id_game, team, home))
 sub_teamgameshots <- teamgameshots |> subset(select = -c(id_game, team, home))
 names(teamgamescores)
@@ -129,26 +153,10 @@ names(teamgameshots)
 teamgame <- inner_join(teamgamescores, teamgameshots, by = "gameteam_id", keep(.x)) |>
   mutate(pct_3pt = pct_3pt*1)
 
-team_4th_3pt <- teamgame %>%
-  group_by(team) %>%
-  summarise(
-    pct_3pt = mean(pct_3pt),
-    att_3pt = mean(att_3pt)
-  )
 
-# Do a test regression
-model <- lm(win ~ att_ft, data = teamgame)
+
+
+model <- lm(win ~ att_3pt + att_ft + q4_margin, data = teamgame)
 
 modelsummary(model)
 pbp$pbp_away |> unique()
-threes <- pbp %>%
-  group_by(id_game) %>%
-  summarize(
-    Total_H_3PM = sum(Home3PM),
-    Total_H_3PA = sum(Home3PA),
-    Total_A_3PM = sum(Away3PM),
-    Total_A_3PA = sum(Away3PA),
-  ) %>%
-  ungroup()
-
-view()

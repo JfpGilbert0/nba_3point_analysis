@@ -1,0 +1,14 @@
+```
+```
+
+
+# Introduction
+
+In the fast paced and high scoring game of basketball, the fourth and final quarter is a source of intense game swaying moments unlike anything else. The strategies and perfomances of teams in these final minutes are stuff of legend and legacy for nba fans and players alike. The final 12 minutes is where the crucible is hottest, but what aspects of this late game play decide he winners?
+Steph Curry is now a household name in the basketball world and beyond, and is often creditted with the start of the "3pt era". [3 pt increasing statistic here]. This increase in propencity and ability to shoot the most valuable shot means scoring burst are now larger than ever, in the crucial moments this shot can be definiive, embodied by the phrase "live by the three die by the three". In this paper we will see if that motif holds srength in the statistics, and if this shot can be a saving grace or a nail in he coffin when a team is trying to win from behind.
+Free throws are another shot in basketball that has changed over the year, with player becoming far more proficient at them. The importance of these types of shots is of no suprise to any basketball fans, as close games are often decided by the leading team making the final shots from "the line".
+This paper will look at how 4th quarter performances of teams relative to these shots influence the games results. 
+
+[reference R...]
+
+# Data
