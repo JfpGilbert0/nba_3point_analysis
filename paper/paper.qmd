@@ -2,7 +2,7 @@
 title: "The impact of 3 point shooting volumes in the 4th quarter"
 subtitle: "" 
 author: "Jacob Gilbert"
-thanks: "Code and data underpinning this paper are available at: "
+thanks: "Code and data underpinning this paper are available at: https://github.com/JfpGilbert0/nba_3point_analysis"
 date: "`r format(Sys.Date(), '%B %d, %Y')`" # This will add the current date
 date-format: long
 bibliography: references.bib
