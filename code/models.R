@@ -1,3 +1,10 @@
+### create and save models ###
+# USE: creates Logit models
+#Author: Jacob Gilbert 
+# Date: 19 April 2024
+# Contact: j.gilbert@mail.utoronto.ca
+# License: MIT
+# Pre-requisites: cleaning.R
 # Setup
 library(tidyverse)
 library(rvest)
@@ -22,7 +29,7 @@ model_1 <- modelsummary(list("Logit" = model1), output = "markdown")
 
 
 # Losing model
-losing_data <- formodel |>
+losing_data <- gamedata |>
   filter(q4_margin < 0) |>
   mutate(q4_margin = -q4_margin)
 model2 <- glm(win ~ pct_diff_3pa, data = losing_data, family = "binomial")
