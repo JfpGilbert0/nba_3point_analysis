@@ -1,3 +1,11 @@
+### clean raw data ###
+# USE: Cleans the dataset pbp_4thonly. It is recomended that you only download the pbp data as all these databases are quite large.
+# Author: Jacob Gilbert 
+# Date: 19 April 2024
+# Contact: j.gilbert@mail.utoronto.ca
+# License: MIT
+# Pre-requisites: Download.R
+
 # Setup
 library(tidyverse)
 library(rvest)

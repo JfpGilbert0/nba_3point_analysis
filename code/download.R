@@ -1,4 +1,10 @@
-
+### Download raw data ###
+# USE: to be run first to download datasets from nbastatR API. It is reccomended that you only download the pbp data as all these databases are quite large.
+# Author: Jacob Gilbert 
+# Date: 19 April 2024
+# Contact: j.gilbert@mail.utoronto.ca
+# License: MIT
+# Pre-requisites: NA
 
 
 # setup
@@ -33,9 +39,13 @@ write_parquet(x = pbp_2, "data/raw/pbp2022_2.parquet")
 pbp_3 <- play_by_play_v2(game_ids = 22101201:22101230)
 write_parquet(x = pbp_3, "data/raw/pbp2022_3.parquet")
 play_by_play_v2(game_ids = 22100604)
-#Save Parquet
 
-# Dowload Rosters
-rosters <- clean_names(seasons_rosters(seasons = 2012:2022))
+# merge play-by-play data
+pbp <- rbind(pbp1, pbp2)
+pbp <- rbind(pbp, pbp3)
+
+#Creating a 4th quarter db
+pbp_4th <- pbp |>
+    filter(number_period == 4)
 #save raw
-write_parquet(x = rosters, sink ="data/raw/rosters.parquet")
+write_parquet(x = pbp_4th, sink = "data/analysis/pbp_4thonly")
