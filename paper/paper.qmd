@@ -1,14 +1,196 @@
+---
+title: "The impact of 3 point shooting volumes in the 4th quarter"
+subtitle: "" 
+author: "Jacob Gilbert"
+thanks: "Code and data underpinning this paper are available at: "
+date: "`r format(Sys.Date(), '%B %d, %Y')`" # This will add the current date
+date-format: long
+bibliography: references.bib
+toc: true
+execute:
+  echo: false
+format: pdf
+fig-pos: "H"
+abstract: "The three point shot has famously surged to the forefront of the nba offence in recent years. The San Francisco based golden state warriors have launched a dynasty over the last decade on the back of this shot. As the rest of the nba has followed suit, it begs the question, does a higher volume of threes lead to victory in the modern nba, especially in the crucial minutes. Drawing from play-by-play data from the 2022 NBA season, we analyze team performances in the final quarter to uncover patterns in three-point shooting and game outcomes.  Contrary to expectations, our findings reveal a negative relationship between increasing three-point attempts and the likelihood of winning, especially when teams are trailing. This challenges the conventional wisdom that prioritizing the high-value three-point shot is always advantageous, highlighting the complexity of winning in the NBA." 
+---
+
+```{r}
+knitr::opts_chunk$set(echo = FALSE, results = "hide", message = FALSE, warning = FALSE)
 ```
+
+# Introduction {#sec-Introduction}
+
+
+In the fast paced and high scoring game of basketball, the fourth and final quarter is a source of intense game swaying moments unlike anything else. The strategies and performances of teams in these final minutes are stuff of legend and legacy for nba fans and players alike. The final 12 minutes is where the crucible is hottest, but what aspects of this late game play decide the winners?
+The three point shot is the most valuable in the game of basketball, and thus no other shot can sway a game more in your favour. In the new millennium teams are shooting more threes better than ever before [@Zajac]. As such we will look into fourth quarter performances in games from the most recent 2022 season to gain insight into how the shot is used in decisive minutes. The basis for this analysis comes from an idea that teams will seek three point shots in an attempt to reduce a deficit late in games and thus a likelihood of winning is expected to be less if more shots are taken. However this could also be challenged due to the value that this shot potentially holds. As teams' strategies differ when it comes to this shot, due to personal and coaching, a meticulous approach must be made to get to the root of the issue. How does the number of three points attempted impact winning, and does this change when teams face the challenge of a comeback.
+
+The paper will first discuss a small literary review @sec-litreview of nba analysis that inspired this paper. Then a discussion of the Data and how it was manipulated for use in the analysis. After viewing some season level summary statistics for the league, the model will be discussed and implemmented. Concluding the paper is a @sec-conc discussing the findings and possible future research.
+
+
+
+
+
+## Literary review {#sec-litreview}
+The study conducted by Tomasz Zając titled Long-Term Trends in Shooting Performance in the NBA provides valuable insights into he changing shooting patterns in the nba from 1979 to 2019. The findings support a significant increase in three point shooting over the decades as well as a decrease in the frequency of two point attempts (@Zajac). Highlighting the changes in the nba that inspired this analysis. Further, the study underscored an improvement in efficiency of three-point shooting to accompany the higher volume (@Zajac). The increased value in this shot brings new opportunities for teams to increase scoring output through the long range shot. The increase in efficiency is key here to increasing the expected value of each additional 3pa, especially as 2 point percentages have not increased in tandem. Thus increasing your quantity of three points should in theory increase the expected points.
+A 2016 paper by Gomez et al. on 4h quarter game dynamics delved deeper than we will into the range of statistics available, and the impact that they had on game outcome. This paper introduces strong precedent that the 4th quarter dynamics (with a focus on close games) played a role superseding any other quarter (@Gomez). From this, and papers preceding, we are inspired to focus only on the final quarter of the games in question. This paper focused on close games ( less than a 10 point deficit) however as we are interested in the how 3 point dynamics change in losing situations as well as winning, this analysis will cover and entire season of data.
+
+
+# Data {#sec-Data}
+
+
+Data was gathered using nbastatR  (link), this tool gathers data from the nba’s stats api and other sources such as basketball reference ()  and basketball insiders (). These form many datasets of information about the world’s biggest basketball league. In this paper play by play data was used from the 2022 season. This allowed for a focus on 4th quarter performance by teams.
+Play-by-play data have unique structures, this source provides data from basketball reference. A paper from 2021 (@rubies) provides insight into using this unique structure to provide usable statistics. Following this studies breakdown of format boolean values for different shot attempts and whether the shot was made were reliably generated. Using these values we were able to create a summary of shooting stats for each of the 30 teams 82 4th quarter performances.
+The major limitation of this data collection was that it does not provide overtime performances. This is when games are a draw at the end of regulation and another period of play proceeds. Making the standard assumption that teams want to win within the 48 minutes of regulation, these results are measured as losses for both teams. Keeping data from these games maintains a comprehensive dataset of all games in the 2022 season. Removing said data would result in skewing the dataset towards games that were not as competitive in the 4th. Changing the definition of winning to regulation wins is very likely to have a smaller impact on bias. Playoff games were also excluded, partially for availability, also for concern of bias. In the playoffs teams play 7 games series and thus playing individual teams repeatedly would skew bias based on the defensive qualities of opponents that they face multiple times. I was deemed a statistically stronger approach to disregard these games.
+
+
+The final dataset included shooting statistics, game results and initial game scenario for both home and away teams in 1230 quarters, resulting in 1460 observations. The data was collected, cleaned and analysed using R programming software (@citeR). Analysis, cleaning and presentation used to following R packages: knitr (@knitr), ggplot(@citeggplot). The following packages were used to generate and display the models: rstanarm (@rstan), modelsummary(@summary)
+
+# Stats around the league {#sec-stats}
+Summary statistics give a perspective on how each team and the league as a whole is shooting in the final 12 minutes of the game, as well as team success.
+
+
+```{R}
+#| echo: False
+library(tidyverse)
+library(ggplot2)
+library(janitor)
+library(arrow)
+library(modelsummary)
+library(rstanarm)
+library(knitr)
+library(here)
+
+teamgame <- read_parquet(here::here("data/analysis/cleaned_pbp.parquet"))
+
+
 ```
 
 
-# Introduction
+```{R, fig.cap= "Summary Statistics"}
+#| label: fig-1
 
-In the fast paced and high scoring game of basketball, the fourth and final quarter is a source of intense game swaying moments unlike anything else. The strategies and perfomances of teams in these final minutes are stuff of legend and legacy for nba fans and players alike. The final 12 minutes is where the crucible is hottest, but what aspects of this late game play decide he winners?
-Steph Curry is now a household name in the basketball world and beyond, and is often creditted with the start of the "3pt era". [3 pt increasing statistic here]. This increase in propencity and ability to shoot the most valuable shot means scoring burst are now larger than ever, in the crucial moments this shot can be definiive, embodied by the phrase "live by the three die by the three". In this paper we will see if that motif holds srength in the statistics, and if this shot can be a saving grace or a nail in he coffin when a team is trying to win from behind.
-Free throws are another shot in basketball that has changed over the year, with player becoming far more proficient at them. The importance of these types of shots is of no suprise to any basketball fans, as close games are often decided by the leading team making the final shots from "the line".
-This paper will look at how 4th quarter performances of teams relative to these shots influence the games results. 
+# Summary statistics:
+team_4th_shots <- teamgame %>%
+  group_by(team) %>%
+  summarise(
+    att_2pt = mean(att_2pt),
+    att_3pt = mean(att_3pt),
+    att_fta = mean(att_ft),
+    pct_2pt = mean(pct_2pt)*100,
+    pct_3pt = mean(pct_3pt)*100,
+    pct_ft = sum(made_ft)/sum(att_ft)*100,
+    win_pct = mean(as.numeric(win))*100
+  )
 
-[reference R...]
 
-# Data
+team_4th_shots  %>%
+  add_row(
+    team = "league Avg",
+    att_2pt = mean(team_4th_shots$att_2pt),
+    att_3pt = mean(team_4th_shots$att_3pt),
+    att_fta = mean(team_4th_shots$att_fta),
+    pct_2pt = mean(team_4th_shots$pct_2pt),
+    pct_3pt = mean(team_4th_shots$pct_3pt),
+    pct_ft = mean(team_4th_shots$pct_ft),
+    win_pct = mean(team_4th_shots$win_pct)
+  ) %>%
+  kable(
+    col.names = c("Team", "2pta", "3pta", "fta", "2pt%", "3pt%", "ft%", "win%"),
+    digits = 2
+  )
+```
+
+
+
+As this data makes clear, teams strategies differ slightly when it comes to shot decisions. Teams like the Golden State Warriors, known for their proficiency in three-point shooting, exhibit a higher average of three-point attempts (9.44) compared to the league average (8.68). Suggesting an emphasis on premier scoring, reflecting a trend in the team using the three-point shot as a late game weapon. The number of attempts doesn't seem to be correlated with season performance as we can see other teams shooting above the league average number of three’s don't always share the warriors success, such as the Timberwolves, Thunder and Magic. The correlation with win% is very weakly negative. The strongest correlation present here is percentage shooting, where teams with greater the and two point percentages see more season success. This is not a surprising result, but does emphasise the pivotal role shooting efficiency plays in late game situations. Analysis of shooting percentages' role in late game outcomes, and situations, should be self-evident and further study is beyond the scope of this paper.
+
+# Game analysis {#sec-analysis}
+
+Although the season level data does not indicate a strong relationship between shot attempts and results, looking at per game circumstances should give a clearer picture.
+Using each team's average shot attempts as a baseline encapsulates any team specific differences in quantity of shots. In order to observe the relationship between 4th quarter 3pa and success in that game the following model is used:
+
+## The Model
+
+$$ 
+\log\left(\frac{p_1}{1-p_1}\right) = \beta_0 + \beta_1 \cdot \text{3paPercentageDiff} \
+$$
+$$
+\beta_0 \sim \text{Norm}\left(0,2.5\right) 
+$$
+$$
+\beta_1 \sim \text{Norm}\left(0, 8\right) 
+$$
+
+The difference from the mean is the independent variable here and is assumed to be modelled as a normal distribution, due to the large sample size. P_1 represents the log probability of a game being won. The independent variable is the percentage change in 3 point attempts compared to the team's mean. Thus the coefficient on the variable of interest estimates the log difference that a difference in three point attempts has on the game resulting in a win. Due to the binary nature of winning the logit model is used here to best obtain meaningful results.
+
+
+```{R, fig.cap= "The Distribution of 3PA against team averages by Wins and Losses"}
+#| label: fig-3
+
+ggplot(teamgame, aes(x = win, y = from_mean_3pa, fill = win)) +
+  geom_violin() +
+  labs(
+    title = "Distribution of 3pa compared to team mean",
+    x = "Outcome",
+    y = "3pa",
+    fill = "Outcome"
+  ) +
+  theme_minimal()
+
+```
+
+
+The above gives a good view of the data relative to game wins and losses. Observe the larger volume of games where teams exceed their average attempts from three in loses. Further we can observe a larger density in the graph indicating an expectation that shooting more threes is more prevalent in losses. The model above will give a more concrete answer to this conjecture. 
+
+## Initial Logit model
+
+
+|              |   Logit   |
+|:-------------|----------:|
+| (Intercept)  |   -0.095  |
+| %change 3pa  |   -0.843  |
+|:-------------|----------:
+| Num.Obs.     |    2460   |
+| R2           |   0.017   |
+| Log.Lik.     | -1681.723 |
+| ELPD         |  -1683.7  |
+| ELPD s.e.    |    6.7    |
+| LOOIC        |   3367.5  |
+| LOOIC s.e.   |    13.5   |
+| WAIC         |   3367.5  |
+| RMSE         |    0.50   |
+
+
+The logistic model reveals insights to the relationship between game result and quantity of 3pa. The intercept indicates log change in odds of winning when a team shoots their average number of 3’s.  The coefficient supports our earlier prediction that there is a negative relationship between increasing the number of 3pa and winning the game. The coefficient indicates a 10% increase in threes has a negative 8 percentage point impact on log winning percentage. In terms of percentage points that is a 10% increase in 3 pointers shot in the 4th decreases the odds of the game being a win by , and vice versa. This result is significant to the 5% level.
+
+## Comeback model
+
+We will also consider a subset of this model with the expectation of a different result. The subset considered is of games where the team is losing at the start of the fourth quarter.
+
+|              |   Logit  |
+|:-------------|---------:|
+| (Intercept)  |  -1.699  |
+|              |  (0.082) |
+| pct_diff_3pa |  -1.566  |
+|              |  (0.272) |
+|:-------------|---------:|
+| Num.Obs.     |   1205   |
+| AIC          |  1028.7  |
+| BIC          |  1038.9  |
+| Log.Lik.     | -512.340 |
+| RMSE         |   0.36   |
+
+This is in place so games already out of reach don’t interfere with the estimation. We see here that in these games shooting more threes has an even more negative association with win likelihood.. This indicates an approximately 7.9 percentage point decrease in win likelihood for every 10% increase in 3 pointers from the mean. as can be seen by the standard errors shown the results are statistically significant. 
+
+# Conclusion {#sec-conc}
+
+
+In conclusion, while the analysis at the season level did not reveal a strong relationship between shot attempts and game results, focusing on per-game circumstances provided a clearer picture. By using each team's average shot attempts as a baseline, we were able to encapsulate any team-specific differences in the quantity of shots. The logistic regression model employed in this study shed light on the relationship between fourth-quarter three-point attempts (3PA) and game success.
+
+The model revealed that increasing the number of three-point attempts has a negative impact on the likelihood of winning the game. Moreover, when teams are behind it has an even greater negative impact. This is especially surprising as we would expect utilising the higher-valued 3 point shot to have a more positive effect on winning when behind. Our analysis contradicts this fact, and underscores the complexity of winning a basketball game, especially from behind. Shooting more of the most valuable shot is not the answer, additional research ion this with regard to other types of shots could yield interesting results. Perhaps utilisation of shot charts (reflecting location where shots are taken) could offer insight into good strategies to winning from behind.
+Overall the answer to the phrase “live by the three die by the three”, that began circulation as a result of the unique offence of the Houston rSockets in the 2010s, is more skewed towards death. 
+
+
+
+
+# References
