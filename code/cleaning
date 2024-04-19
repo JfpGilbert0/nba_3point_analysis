@@ -1,18 +1,20 @@
 # Setup
 library(tidyverse)
 library(rvest)
-library(nbastatR)
-library(lubridate)
 library(janitor)
 library(heapsofpapers)
 library(arrow)
 library(modelsummary)
 library(bayesplot)
 library(vtable)
+library(rstanarm)
 # Here we will play around with some 4th quarter play by play data,
 # some of the manipulation may be moved to cleaning folder.
 pbp <- read_parquet("data/analysis/pbp_4thonly")
+gamedata <- read_parquet("data/raw/gamedata.parquet")
 
+# get team logo
+logos <- gamedata |> select(name_team, url_team_season_logo)
 # Function that takes play-by-play string and returns a simplified string for shots
 # Perhaps extend to turnovers? and other plays
 identify_shot <- function(play) {
@@ -84,15 +86,9 @@ teamgameshots <-pbp_group_test |>
          att_3pt = ifelse(home, att_3_h, att_3_a),
          att_2pt = ifelse(home, att_2_h, att_2_a),
          att_ft = ifelse(home, att_ft_h, att_ft_a),
-         made_ft = ifelse(home, made_ft_h, made_ft_a),
-         opp_pct_3pt = ifelse(home, made_ft_a/att_ft_a, made_ft_h/att_ft_h), #this mehod for opp stats doesnt work!!!!!
-         opp_pct_2pt =  ifelse(home, made_ft_a/att_ft_a, made_ft_h/att_ft_h), #because away stats are empty in summarize table
-         opp_pct_ft = ifelse(home, made_ft_a/att_ft_a, made_ft_h/att_ft_h),
-         opp_att_3pt = ifelse(home, att_3_a, att_3_h),
-         opp_att_2pt = ifelse(home, att_2_a, att_2_h),
-         opp_att_ft = ifelse(home, att_ft_a, att_ft_h)
+         made_ft = ifelse(home, made_ft_h, made_ft_a)
          ) %>%
-  select(gameteam_id, id_game, team, home, pct_3pt, pct_2pt, pct_ft, att_3pt, att_2pt, att_ft, made_ft, opp_pct_3pt, opp_pct_2pt, opp_pct_ft, opp_att_3pt, opp_att_2pt,  , opp_att_ft)
+  select(gameteam_id, id_game, team, home, pct_3pt, pct_2pt, pct_ft, att_3pt, att_2pt, att_ft, made_ft)
 
 #will use this table to id home team
 # gather and group score, 4Q lead data per team per game
@@ -124,5 +120,11 @@ sub_teamgamescores <- teamgamescores |> subset(select = -c(id_game, team, home))
 
 
 teamgame <- inner_join(sub_teamgamescores, teamgameshots, by = "gameteam_id", keep(.x))
+teamgame <- teamgame |>
+  group_by(team) |>
+  mutate(mean_3pa = mean(att_3pt, na.rm = TRUE),
+         from_mean_3pa = att_3pt - mean_3pa,
+         pct_diff_3pa = (att_3pt-mean_3pa)/ mean_3pa)
+
 
 write_parquet(x = teamgame, sink ="data/analysis/cleaned_pbp.parquet")
