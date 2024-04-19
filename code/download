@@ -34,7 +34,6 @@ pbp_3 <- play_by_play_v2(game_ids = 22101201:22101230)
 write_parquet(x = pbp_3, "data/raw/pbp2022_3.parquet")
 play_by_play_v2(game_ids = 22100604)
 #Save Parquet
-write_parquet(x = pbp_2,,  )
 
 # Dowload Rosters
 rosters <- clean_names(seasons_rosters(seasons = 2012:2022))

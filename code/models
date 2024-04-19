@@ -9,25 +9,23 @@ library(arrow)
 library(modelsummary)
 library(bayesplot)
 # Open Parquet
-gamedata <- read_parquet("data/analysis/cleaned_gamedata.parquet")
+gamedata <- read_parquet("data/analysis/cleaned_pbp.parquet")
 
-view(head(gamedata))
-# for short regression
+# model 1
+model1 <- stan_glm(win ~ pct_diff_3pa, data = gamedata, family = binomial(link = "logit"), prior = normal(location = 0, scale = 2.5, autoscale = TRUE),
+    prior_intercept = normal(location = 0, scale = 8, autoscale = TRUE),
+    seed = 30)
 
-data_short <- gamedata %>% select(year_season, name_player, minutes, id_game, pts_diff, is_bday) %>%
-filter(minutes > 10)
+saveRDS(model1, file = "data/models/model_1.rds")
 
-data_short |> count(is_bday)
+model_1 <- modelsummary(list("Logit" = model1), output = "markdown") 
 
-short <- glm(pts_diff ~ is_bday, data = data_short)
-modelsummary(short)
 
-minutes_short <-  glm(min_diff ~ is_bday, data = gamedata)
-modelsummary(minutes_short)
-# Look at birthday games
-bday_games <- gamedata |> filter(is_bday)
+# Losing model
+losing_data <- formodel |>
+  filter(q4_margin < 0) |>
+  mutate(q4_margin = -q4_margin)
+model2 <- glm(win ~ pct_diff_3pa, data = losing_data, family = "binomial")
+saveRDS(model2, file = "data/models/model_2.rds")
 
-pp_check(short)
-
-ggplot() +
-geom_point(data = gamedata, aes(x = pts_diff, y = minutes))
+modelsummary(list("Logit" = mode2), output = "markdown")
